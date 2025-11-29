@@ -1,0 +1,46 @@
+services:
+  web:
+    build: ./web
+    container_name: log-web
+    hostname: log-web
+    ports:
+    - "8080:80"
+    environment:
+      DB_HOST: log-db
+      DB_PORT: 3306
+      DB_NAME: logdb
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+      APP_REQUIRED_PORT: 8080
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - log-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  db:
+    image: mariadb:12.1
+    environment:
+      MARIADB_DATABASE: logdb
+      MARIADB_USER: appuser
+      MARIADB_PASSWORD: apppass
+      MARIADB_ROOT_PASSWORD: rootpass
+    volumes:
+     - db_data:/var/lib/mysql
+     - /init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-uappuser", "-papppass"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+networks:
+  log-net:
+
+volumes:
+  db_data:
